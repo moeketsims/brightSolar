@@ -1,4 +1,6 @@
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const AUTH_COOKIE = "bsp_token";
+const AUTH_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
 export type ProjectStatus =
   | "quoting"
@@ -485,10 +487,60 @@ export interface DashboardOut {
   cards: DashboardProjectCard[];
 }
 
+function authToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const tokenCookie = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(`${AUTH_COOKIE}=`));
+  return tokenCookie ? decodeURIComponent(tokenCookie.split("=").slice(1).join("=")) : null;
+}
+
+function setAuthCookie(token: string) {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE}=${encodeURIComponent(token)}; Path=/; Max-Age=${AUTH_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+}
+
+function clearAuthCookie() {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${AUTH_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
+
+function jsonHeaders(headers?: HeadersInit): Headers {
+  const nextHeaders = new Headers(headers);
+  if (!nextHeaders.has("Content-Type")) {
+    nextHeaders.set("Content-Type", "application/json");
+  }
+  const token = authToken();
+  if (token && !nextHeaders.has("Authorization")) {
+    nextHeaders.set("Authorization", `Bearer ${token}`);
+  }
+  return nextHeaders;
+}
+
+function authHeaders(headers?: HeadersInit): Headers {
+  const nextHeaders = new Headers(headers);
+  const token = authToken();
+  if (token && !nextHeaders.has("Authorization")) {
+    nextHeaders.set("Authorization", `Bearer ${token}`);
+  }
+  return nextHeaders;
+}
+
+function apiUrl(path: string, includeToken = false): string {
+  const url = new URL(path, API);
+  const token = authToken();
+  if (includeToken && token) {
+    url.searchParams.set("token", token);
+  }
+  return url.toString();
+}
+
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers: jsonHeaders(init?.headers),
     credentials: "include",
     cache: "no-store",
   });
@@ -589,7 +641,7 @@ export const api = {
       { method: "POST" }
     ),
 
-  quotePdfUrl: (projectId: number) => `${API}/projects/${projectId}/quote.pdf`,
+  quotePdfUrl: (projectId: number) => apiUrl(`/projects/${projectId}/quote.pdf`, true),
   acceptQuote: (projectId: number, accepted_by_name: string) =>
     json<ProjectDetail>(`/projects/${projectId}/accept`, {
       method: "POST",
@@ -629,7 +681,7 @@ export const api = {
     }),
   deletePayment: (invoiceId: number, paymentId: number) =>
     json<void>(`/invoices/${invoiceId}/payments/${paymentId}`, { method: "DELETE" }),
-  invoicePdfUrl: (invoiceId: number) => `${API}/invoices/${invoiceId}/pdf`,
+  invoicePdfUrl: (invoiceId: number) => apiUrl(`/invoices/${invoiceId}/pdf`, true),
 
   listTrips: (params: { vehicle_id?: number; from_date?: string; to_date?: string } = {}) => {
     const q = new URLSearchParams();
@@ -650,24 +702,38 @@ export const api = {
     if (params.from_date) q.append("from_date", params.from_date);
     if (params.to_date) q.append("to_date", params.to_date);
     const s = q.toString();
-    return `${API}/trips/export.csv${s ? `?${s}` : ""}`;
+    return apiUrl(`/trips/export.csv${s ? `?${s}` : ""}`, true);
   },
 
   async ocrReceipt(file: File | Blob): Promise<{ amount: string | null }> {
     const fd = new FormData();
     fd.append("receipt", file);
-    const res = await fetch(`${API}/expenses/ocr`, { method: "POST", body: fd, credentials: "include" });
+    const res = await fetch(`${API}/expenses/ocr`, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      headers: authHeaders(),
+    });
     if (!res.ok) return { amount: null };
     return res.json();
   },
 
   // Auth
-  login: (email: string, password: string) =>
-    json<{ access_token: string }>("/auth/login", {
+  async login(email: string, password: string) {
+    const result = await json<{ access_token: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
-    }),
-  logout: () => json<void>("/auth/logout", { method: "POST" }),
+    });
+    setAuthCookie(result.access_token);
+    return result;
+  },
+  async logout() {
+    try {
+      await json<void>("/auth/logout", { method: "POST" });
+    } finally {
+      clearAuthCookie();
+    }
+  },
   me: () => json<CurrentUser>("/auth/me"),
   listUsers: () => json<CurrentUser[]>("/auth/users"),
   createUser: (body: { email: string; name: string; password: string; role: UserRole; technician_id?: number | null }) =>
@@ -701,6 +767,7 @@ export const api = {
       method: "POST",
       body: fd,
       credentials: "include",
+      headers: authHeaders(),
     });
     if (res.status === 401 && typeof window !== "undefined") {
       window.location.href = "/login";
@@ -726,5 +793,5 @@ export function formatZARPrecise(v: string | number | null | undefined): string 
 export function absoluteUrl(path: string | null): string | null {
   if (!path) return null;
   if (path.startsWith("http")) return path;
-  return `${API}${path}`;
+  return apiUrl(path, true);
 }
