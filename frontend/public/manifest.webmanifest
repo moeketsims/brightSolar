@@ -1,0 +1,12 @@
+{
+  "name": "Bright Solar Power — Ops",
+  "short_name": "BSP Ops",
+  "description": "Bright Solar Power operations — quoting, activities, receipts, invoices",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0d12",
+  "theme_color": "#0a0d12",
+  "icons": [
+    { "src": "/brand/logo.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}

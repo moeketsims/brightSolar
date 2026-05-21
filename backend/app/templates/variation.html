@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ vo.vo_number }} — Variation Order</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 24mm 18mm;
+    @bottom-center {
+      content: "{{ settings.business_name }}  ·  VO {{ vo.vo_number }}  ·  Page " counter(page) " of " counter(pages);
+      font-size: 9pt;
+      color: #8a8a8a;
+    }
+  }
+  body { font-family: "Liberation Sans", Arial, sans-serif; color: #1a1a1a; font-size: 10pt; line-height: 1.45; }
+  h1, h2 { margin: 0; font-weight: 600; }
+  h1 { font-size: 20pt; color: #1e78b4; }
+  h2 { font-size: 12pt; color: #1e78b4; text-transform: uppercase; letter-spacing: 0.6pt; margin-bottom: 4pt; }
+  .brand-bar { border-bottom: 2pt solid #f5b921; padding-bottom: 10pt; margin-bottom: 14pt; display: flex; justify-content: space-between; align-items: flex-start; }
+  .biz { text-align: right; font-size: 9pt; color: #444; }
+  img.logo { height: 52pt; }
+  .client-box { background: #f4f7fa; border-left: 3pt solid #2a90c9; padding: 10pt 12pt; margin: 4pt 0 16pt 0; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 6pt 4pt; vertical-align: top; }
+  .meta .label { color: #666; text-transform: uppercase; font-size: 8.5pt; letter-spacing: 0.5pt; }
+  .delta-card { border: 1pt solid #f5b921; border-radius: 4pt; padding: 12pt; margin: 10pt 0; background: #fff8e6; }
+  .totals td { border: none; padding: 3pt 4pt; }
+  .totals .label { text-align: right; color: #555; }
+  .totals .sum { text-align: right; font-variant-numeric: tabular-nums; }
+  .totals .grand td { border-top: 2pt solid #1e78b4; font-weight: 700; font-size: 12pt; padding-top: 8pt; }
+  .totals .grand .sum { color: #1e78b4; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24pt; margin-top: 30pt; }
+  .sig-box { border-top: 1pt solid #1a1a1a; padding-top: 4pt; font-size: 9pt; color: #444; }
+</style>
+</head>
+<body>
+
+{% if vo.accepted_at %}
+<div style="background: #10b981; color: white; padding: 6pt 12pt; border-radius: 4pt; margin-bottom: 10pt; text-align: center; font-weight: 600;">
+  ✓ ACCEPTED by {{ vo.accepted_by_name }} on {{ vo.accepted_at.strftime("%d %B %Y") }}
+</div>
+{% endif %}
+
+<div class="brand-bar">
+  {% if logo_data_uri %}
+  <img class="logo" src="{{ logo_data_uri }}" alt="{{ settings.business_name }}">
+  {% else %}
+  <div><h1>{{ settings.business_name }}</h1></div>
+  {% endif %}
+  <div class="biz">
+    <strong>{{ settings.business_name }}</strong><br>
+    {% if settings.base_address %}{{ settings.base_address }}<br>{% endif %}
+    {% if settings.business_phone %}{{ settings.business_phone }} · {% endif %}
+    {% if settings.business_email %}{{ settings.business_email }}{% endif %}<br>
+    {% if settings.business_vat_number %}VAT: {{ settings.business_vat_number }}{% endif %}
+  </div>
+</div>
+
+<h1>Variation Order</h1>
+
+<table class="meta">
+  <tr>
+    <td style="width: 25%"><span class="label">VO #</span><br><strong>{{ vo.vo_number }}</strong></td>
+    <td style="width: 25%"><span class="label">Date</span><br>{{ issue_date }}</td>
+    <td style="width: 25%"><span class="label">Against quote</span><br>{{ project.quote_number or "—" }}</td>
+    <td style="width: 25%"><span class="label">Project</span><br><strong>{{ project.title }}</strong></td>
+  </tr>
+</table>
+
+<div class="client-box">
+  <div style="font-size: 9pt; color: #666; text-transform: uppercase;">Client</div>
+  <strong>{{ project.client.name }}</strong><br>
+  {% if project.client.address %}{{ project.client.address }}<br>{% endif %}
+  {% if project.client.phone %}{{ project.client.phone }}{% endif %}
+</div>
+
+<h2>Scope change</h2>
+<div class="delta-card">
+  {{ vo.scope_delta|replace("\n", "<br>")|safe }}
+</div>
+
+{% if vo.reason %}
+<h2>Reason</h2>
+<p>{{ vo.reason }}</p>
+{% endif %}
+
+<h2>Cost impact</h2>
+<table class="totals">
+  <tr>
+    <td class="label">Variation amount (ex VAT)</td>
+    <td class="sum" style="width: 30%">R {{ "{:,.2f}".format(vo.cost_delta_ex_vat) }}</td>
+  </tr>
+  <tr>
+    <td class="label">VAT ({{ "{:g}".format(vo.vat_pct_snapshot) }}%)</td>
+    <td class="sum">R {{ "{:,.2f}".format(vat_amount) }}</td>
+  </tr>
+  <tr class="grand">
+    <td class="label">Total variation (inc VAT)</td>
+    <td class="sum">R {{ "{:,.2f}".format(total_inc_vat) }}</td>
+  </tr>
+</table>
+
+<p style="font-size: 9pt; color: #555; margin-top: 20pt;">
+  This variation order is additional to the original quotation{% if project.quote_number %} ({{ project.quote_number }}){% endif %}
+  and forms part of the agreed scope of work upon signature below.
+</p>
+
+<div class="sig-grid">
+  <div class="sig-box">
+    Client signature &amp; date
+  </div>
+  <div class="sig-box">
+    For {{ settings.business_name }}
+  </div>
+</div>
+
+</body>
+</html>
