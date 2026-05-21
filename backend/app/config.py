@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://brightsolar:brightsolar@db:5432/brightsolar"
     cors_origins: str = "http://localhost:3000"
-    cors_origin_regex: str | None = r"http://(localhost|127\.0\.0\.1):\d+"
+    cors_origin_regex: str | None = None
     env: str = "development"
     jwt_secret: str = "change-me-in-production-this-is-a-dev-only-default"
     jwt_algorithm: str = "HS256"
@@ -15,6 +15,12 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def effective_cors_origin_regex(self) -> str | None:
+        if self.env == "production":
+            return None
+        return self.cors_origin_regex
 
 
 settings = Settings()

@@ -17,8 +17,12 @@ out/
 
 # Env
 .env
+.env.prod
 .env.local
 .env.*.local
+
+# Runtime data
+backups/
 
 # OS
 .DS_Store

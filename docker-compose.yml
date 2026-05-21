@@ -21,6 +21,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://brightsolar:brightsolar@db:5432/brightsolar
       CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGIN_REGEX: 'http://(localhost|127\.0\.0\.1):\d+'
       ENV: development
     depends_on:
       db:

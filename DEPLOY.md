@@ -20,7 +20,7 @@ sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin u
 sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
 
 # Clone the app
-git clone https://github.com/YOUR/brightSolar.git
+git clone https://github.com/moeketsims/brightSolar.git
 cd brightSolar
 
 # Create the prod env file
@@ -76,6 +76,10 @@ sudo systemctl reload caddy
 
 Caddy automatically provisions a Let's Encrypt cert. Visit
 `https://ops.brightsolarpower.co.za` and you're live.
+
+The production Compose overlay binds the frontend and backend to `127.0.0.1`
+only, so they are reachable by Caddy on the VPS but not exposed directly to the
+public internet.
 
 ## Backups
 

@@ -24,7 +24,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required in .env (use `openssl rand -hex 32`)}
       ENV: production
-    ports: !reset []   # only reachable through the reverse proxy
+    ports: !override
+      - "127.0.0.1:8000:8000"   # only reachable locally by the reverse proxy
     volumes:
       - ./backend/app:/app/app
       - uploads_data:/app/uploads
@@ -34,11 +35,13 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${PUBLIC_URL}
     environment:
       NEXT_PUBLIC_API_URL: ${PUBLIC_URL}
       NODE_ENV: production
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     restart: unless-stopped
     depends_on:
       - backend
