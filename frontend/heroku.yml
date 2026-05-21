@@ -1,0 +1,7 @@
+build:
+  docker:
+    web: Dockerfile
+  config:
+    NEXT_PUBLIC_API_URL: https://brightsolar-api-e82e91ff036a.herokuapp.com
+run:
+  web: npm start -- -p ${PORT}

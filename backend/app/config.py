@@ -13,6 +13,20 @@ class Settings(BaseSettings):
     jwt_expires_minutes: int = 60 * 24 * 7  # 7 days
 
     @property
+    def sqlalchemy_database_url(self) -> str:
+        if self.database_url.startswith("postgres://"):
+            return self.database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if self.database_url.startswith("postgresql://"):
+            return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return self.database_url
+
+    @property
+    def sqlalchemy_connect_args(self) -> dict[str, bool]:
+        if self.env == "production" and "localhost" not in self.sqlalchemy_database_url:
+            return {"ssl": True}
+        return {}
+
+    @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
