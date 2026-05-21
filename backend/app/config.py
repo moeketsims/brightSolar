@@ -1,3 +1,5 @@
+import ssl
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,9 +23,12 @@ class Settings(BaseSettings):
         return self.database_url
 
     @property
-    def sqlalchemy_connect_args(self) -> dict[str, bool]:
+    def sqlalchemy_connect_args(self) -> dict[str, object]:
         if self.env == "production" and "localhost" not in self.sqlalchemy_database_url:
-            return {"ssl": True}
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            return {"ssl": ssl_context}
         return {}
 
     @property
