@@ -11,9 +11,6 @@ const apiEndpoints = [
   "/vehicles",
   "/projects/dashboard/summary",
   "/projects",
-  "/projects/4",
-  "/projects/4/activities",
-  "/projects/4/reconciliation",
   "/templates",
   "/invoices",
   "/trips",
@@ -29,8 +26,6 @@ const frontendRoutes = [
   "/today",
   "/projects",
   "/projects/new",
-  "/projects/4",
-  "/projects/4/edit",
   "/invoices",
   "/trips",
   "/log",
@@ -75,6 +70,23 @@ async function main() {
 
   const checks = [];
 
+  const projectsResponse = await request("API projects for smoke route selection", absolute(API_URL, "/projects"), {
+    headers: authHeaders,
+  });
+  const projects = JSON.parse(projectsResponse.body);
+  const projectId = projects[0]?.id;
+  if (!projectId) throw new Error("Smoke test needs at least one seeded project");
+
+  const projectApiEndpoints = [
+    `/projects/${projectId}`,
+    `/projects/${projectId}/activities`,
+    `/projects/${projectId}/reconciliation`,
+  ];
+  const projectFrontendRoutes = [
+    `/projects/${projectId}`,
+    `/projects/${projectId}/edit`,
+  ];
+
   for (const endpoint of apiEndpoints) {
     const { res } = await request(`API ${endpoint}`, absolute(API_URL, endpoint), {
       headers: authHeaders,
@@ -82,7 +94,22 @@ async function main() {
     checks.push(`API ${endpoint} -> ${res.status}`);
   }
 
+  for (const endpoint of projectApiEndpoints) {
+    const { res } = await request(`API ${endpoint}`, absolute(API_URL, endpoint), {
+      headers: authHeaders,
+    });
+    checks.push(`API ${endpoint} -> ${res.status}`);
+  }
+
   for (const route of frontendRoutes) {
+    const { res, body } = await request(`Frontend ${route}`, absolute(FRONTEND_URL, route), {
+      headers: authHeaders,
+    });
+    assertNoBrokenText(`Frontend ${route}`, body);
+    checks.push(`Frontend ${route} -> ${res.status}`);
+  }
+
+  for (const route of projectFrontendRoutes) {
     const { res, body } = await request(`Frontend ${route}`, absolute(FRONTEND_URL, route), {
       headers: authHeaders,
     });
